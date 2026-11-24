@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; form-action 'self'">
+<title>Tamper-proof skill certificate issuer · Open MSME</title>
+<meta name="description" content="A free single-binary tool for small training institutes in India and the Philippines: sign skill certificates with your own Ed25519 key so anyone can verify them offline.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/accent.css">
+<script src="assets/theme-init.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <span class="brand"><span class="dot"></span>Certificate issuer<span class="tag">open source</span></span>
+    <span class="sp"></span>
+    <a class="home" href="https://sreenivas-sadhu-prabhakara.github.io/openmsme/">All tools</a>
+    <button class="themer" type="button" data-themer>Dark</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <p class="eyebrow">Education &amp; skilling · India + Philippines</p>
+    <h1>Tamper-proof skill certificate issuer for training institutes</h1>
+    <p class="lede">Your certificate is a word-processor file that anyone can edit, and the employer reading it has no way to tell. This tool signs each certificate with your institute's own key and prints a verification code on it. Anyone can check that code offline, in seconds, without contacting you.</p>
+    <div class="who">
+      <span class="pill">Small training institutes, skilling centres and trade schools</span>
+      <span class="pill reg">Ed25519 signed credentials</span>
+      <span class="pill">Single binary · no internet</span>
+    </div>
+  </section>
+
+  <div class="cols">
+    <section class="prose">
+
+      <h2>What it does</h2>
+      <p>You set up your institute once: the tool generates a signing key and saves it on your machine with owner-only permissions. From then on, every certificate you issue is signed.</p>
+      <p>A signed certificate carries a short, printable <strong>verification code</strong>. The code holds the certificate's details and the signature together, so checking it needs nothing but the code and your published public key — no website to visit, no account, no call to your office. An employer in another city, or in another country, can check it with no internet connection at all.</p>
+      <p>Change a single character of a signed certificate — one letter of the learner's name, one digit of the hours, the date, the grade, the certificate number — and the code stops verifying. That is the whole point: the details and the signature stand or fall together.</p>
+
+      <h2>Who it's for</h2>
+      <p>Small training institutes, skilling centres and trade schools that print their own certificates: welding and fitting shops, tailoring and beauty courses, computer and spoken-English centres, driving schools, barangay and panchayat skilling programmes. Anywhere a course ends in a piece of paper that someone later has to trust.</p>
+      <p>It is equally for the person on the other side. An employer, a college admissions clerk or a recruitment agency can run the same tool in verify mode and get a yes or no, without the institute being involved.</p>
+
+      <h2>The rule it implements</h2>
+      <p>There is no statute behind this tool. The named rule in the pill above is a cryptographic standard, not a law: <strong>Ed25519</strong>, the signature scheme defined in <strong>RFC 8032</strong>, as implemented in the Go standard library's <code>crypto/ed25519</code>.</p>
+      <p>What the tool signs is fixed and published here, because a signature is only meaningful if everyone agrees on exactly which bytes it covers. The signed field set is these eight fields, in this order:</p>
+      <pre>id
+learner_name
+course
+hours
+grade
+issued_on
+issuer_name
+issuer_pubkey</pre>
+      <p>They are encoded one per line as <code>name=length:value</code> after a version header, so the encoding is unambiguous: because each value carries its own byte length, a learner named "AB" who took course "C" can never produce the same bytes as a learner named "A" who took course "BC". Without that length prefix, one signature could cover two different readings of the same certificate.</p>
+      <details class="assumptions">
+        <summary>Fixed parameters, defined once in the code</summary>
+        <ul>
+          <li><strong>Signature scheme</strong> — Ed25519 (RFC 8032). Public key 32 bytes, private key 64 bytes, signature 64 bytes.</li>
+          <li><strong>Encoding version header</strong> — <code>omsme-cert/v1</code>. A future field set gets a new header, so an old verifier refuses a new certificate instead of misreading it.</li>
+          <li><strong>Code prefix</strong> — <code>CERT1-</code>, followed by unpadded base64url of the signed bytes and the signature.</li>
+          <li><strong>Key file permissions</strong> — <code>0600</code>, owner read and write only.</li>
+          <li><strong>Date format</strong> — <code>YYYY-MM-DD</code>, zero padded, rejected if it is not a real calendar date. 2024-02-29 is accepted; 2023-02-29 and 1900-02-29 are not.</li>
+        </ul>
+        <p>These are properties of the signature format, not figures set by any authority, so nothing here expires or needs re-checking against a gazette. Whether a certificate <em>counts</em> for anything — recognition, accreditation, a place on a qualifications framework — is a separate matter decided by your awarding body or regulator. Confirm those requirements with them; this tool neither grants nor affects them.</p>
+      </details>
+
+      <h2>Install &amp; run</h2>
+      <p>It is one Go file tree with no dependencies: no database, no package manager, no build step beyond <code>go build</code>. Clone the repository, then:</p>
+      <pre>cd verifiable-cert-issuer
+go build -o cert-issuer .
+./cert-issuer</pre>
+      <p>Open <code>http://127.0.0.1:8080/</code>. To use a different port or file locations:</p>
+      <pre>./cert-issuer \
+  -addr 127.0.0.1:9000 \
+  -data ./certificates.json \
+  -key ./institute-key.json</pre>
+      <p>Verification needs no user interface at all. The same binary checks a code from the command line and exits non-zero if it does not verify, so it drops into a script:</p>
+      <pre>./cert-issuer \
+  -verify CERT1-b21zbWUtY2V… \
+  -pubkey Uyk5kiJSrdBSye…</pre>
+      <p>The <code>-pubkey</code> value may be the key itself or the path of the public-key file the tool exports. Line breaks and spaces inside a code or a key are ignored, so a code copied off a printed certificate works.</p>
+
+      <h2>What it stores</h2>
+      <p>Two files on your own machine, and nothing else:</p>
+      <ul>
+        <li><strong>The certificate list</strong>, a plain JSON file at the <code>-data</code> path. Every certificate you have issued, with its signature and its code. Written through a temporary file and renamed into place, so an interrupted write cannot truncate it.</li>
+        <li><strong>The private signing key</strong>, a separate JSON file at the <code>-key</code> path, created with <code>0600</code> permissions. The tool warns you if those permissions are ever loosened.</li>
+      </ul>
+      <p>Nothing is sent anywhere. The tool makes no outbound network connections, has no telemetry, loads no fonts or scripts from the internet, and binds to <code>127.0.0.1</code> so it is not reachable from the rest of the network. Back up the key file the way you would back up a rubber stamp — and keep it as private.</p>
+
+      <h2>Features</h2>
+      <div class="featgrid">
+        <div class="feat">
+          <h3>Set up once</h3>
+          <p>Name your institute, generate a key, and the tool allocates certificate numbers for you from a prefix and the year.</p>
+        </div>
+        <div class="feat">
+          <h3>Printable certificate</h3>
+          <p>Each certificate gets a clean printable page with the learner's details and the verification code on it.</p>
+        </div>
+        <div class="feat">
+          <h3>Verify screen</h3>
+          <p>Paste a code and a public key: pass or fail, the decoded details, and the list of fields the signature actually covers.</p>
+        </div>
+        <div class="feat">
+          <h3>Batch from a spreadsheet</h3>
+          <p>Export a class list as CSV and sign the whole batch. Bad rows are reported by line number; the rest still go through.</p>
+        </div>
+        <div class="feat">
+          <h3>Public key export</h3>
+          <p>One short string, in a text file you can email, publish or print, that lets employers verify on their own.</p>
+        </div>
+        <div class="feat">
+          <h3>Command-line verify</h3>
+          <p>Checking works with no interface at all and exits non-zero on failure, so it fits into whatever an employer already runs.</p>
+        </div>
+      </div>
+
+      <h2>How it is used in practice</h2>
+      <ol class="steps">
+        <li>Generate the institute's key once, back up the key file, and publish the public key on your website and your letterhead.</li>
+        <li>Issue certificates as learners finish, singly or as a batch from your class spreadsheet.</li>
+        <li>Print the verification code on the certificate, and send it with the learner's digital copy.</li>
+        <li>An employer pastes the code and your published public key into the verify screen, or runs the one-line command, and gets pass or fail.</li>
+      </ol>
+
+      <h2>What a pass proves, and what it does not</h2>
+      <div class="note">A pass means two things, and only these two: the certificate was signed by whoever holds the private key matching the public key you supplied, and not one character of the signed details has changed since. It does <strong>not</strong> mean the institute is accredited, registered or recognised by anyone. It does not mean the course was any good, that the learner attended, or that the grade was earned. Those are questions about the institute, and a signature cannot answer them.</div>
+      <div class="note">The public key is what decides the answer — never the institute name printed on the certificate. Anyone can generate a key, sign a certificate naming any institute at all, and get a code that is internally consistent. That is why the verify screen refuses to return a pass on the key carried inside a code, and insists on a key you supply from somewhere else. Get the institute's public key from the institute: their website, their letterhead, a file they sent you. Not from the certificate you are checking.</div>
+      <div class="note">Not yet implemented, and deliberately not pretended: this is <strong>not</strong> a W3C Verifiable Credential. The codes are this tool's own format and no W3C VC serialisation is produced or accepted. <strong>QR codes are not rendered</strong> — the verification code is text you print, copy or type. There is also no revocation list and no expiry: once a certificate is issued, its code verifies forever, and nothing in this tool can call it back.</div>
+      <div class="note">If the private key file is <strong>lost</strong>, every certificate you have already issued stays verifiable — verification only ever needs the public key, which you have published. What you lose is the ability to issue any more under that key: you generate a new one, publish it too, and from then on employers need the old public key for old certificates and the new one for new ones. If the private key is <strong>leaked</strong>, anyone holding it can sign certificates in your institute's name that verify exactly like yours, and there is no way to tell them apart or to withdraw codes already in circulation. The only remedy is to generate a new key, publish it, and say plainly from which date the old key is retired. Guard the key file accordingly, and keep a backup somewhere a fire or a dead disk cannot reach.</div>
+
+      <h2>Open source</h2>
+      <p>MIT licensed, standard library only, no third-party modules. The signing, the encoding and the verification rules live in one small package with table-driven tests covering every rule described above, including each single-field tamper and corrupted codes. Read it, change it, run it entirely offline.</p>
+
+    </section>
+  </div>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <span>Open MSME · free tools for micro and small businesses in India and the Philippines</span>
+    <span><a href="https://sreenivas-sadhu-prabhakara.github.io/openmsme/">All tools</a></span>
+  </div>
+</footer>
+
+<script src="assets/ui.js"></script>
+</body>
+</html>

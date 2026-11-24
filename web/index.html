@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; form-action 'self'; connect-src 'self'">
+<title>Skill certificate issuer · Open MSME</title>
+<meta name="description" content="Issue skill certificates signed with your institute's own key, and verify any certificate code offline.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/accent.css">
+<script src="assets/theme-init.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <span class="brand"><span class="dot"></span>Certificate issuer<span class="tag">runs locally</span></span>
+    <span class="sp"></span>
+    <button class="themer" type="button" data-themer>Dark</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero" data-chrome>
+    <p class="eyebrow">Education &amp; skilling · India + Philippines</p>
+    <h1>Tamper-proof skill certificate issuer for training institutes</h1>
+    <p class="lede">A certificate written in a word processor is a file anyone can edit, and an employer has no way to tell. Sign each certificate with your institute's own key instead: the code it carries can be checked by anyone, offline, without contacting you.</p>
+    <div class="who">
+      <span class="pill">Small training institutes, skilling centres and trade schools</span>
+      <span class="pill reg">Ed25519 signed credentials</span>
+      <span class="pill">Nothing leaves this machine</span>
+    </div>
+  </section>
+
+  <!-- Every switchable block is a plain div: the hidden attribute only takes
+       effect on an element whose display is not set by a stylesheet rule. -->
+  <div data-chrome>
+    <div class="cols">
+      <nav class="seg" id="nav" aria-label="Sections">
+        <button type="button" data-goto="issue" aria-pressed="true">Issue</button>
+        <button type="button" data-goto="verify" aria-pressed="false">Verify</button>
+        <button type="button" data-goto="batch" aria-pressed="false">Batch from CSV</button>
+        <button type="button" data-goto="issued" aria-pressed="false">Issued</button>
+        <button type="button" data-goto="institute" aria-pressed="false">Institute &amp; key</button>
+      </nav>
+    </div>
+  </div>
+
+  <!-- ------------------------------------------------------------ issue -->
+  <div data-view="issue">
+   <div class="cols calc">
+    <section class="card">
+      <h2>Issue a certificate</h2>
+      <div class="field">
+        <label for="iss-learner">Learner name</label>
+        <input id="iss-learner" type="text" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="iss-course">Course</label>
+        <input id="iss-course" type="text" autocomplete="off">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label for="iss-hours">Course hours</label>
+          <div class="inp has-suf">
+            <input id="iss-hours" type="number" min="0" step="1" value="0">
+            <span class="suf">hrs</span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="iss-grade">Grade or result <span class="hint">optional</span></label>
+          <input id="iss-grade" type="text" autocomplete="off">
+        </div>
+      </div>
+      <div class="field">
+        <label for="iss-date">Issue date <span class="hint">YYYY-MM-DD</span></label>
+        <input id="iss-date" type="text" inputmode="numeric" autocomplete="off" placeholder="2026-03-14">
+      </div>
+      <div class="btnrow">
+        <button class="btn primary" type="button" id="iss-go">Sign and issue</button>
+        <button class="btn ghost" type="button" id="iss-clear">Clear</button>
+      </div>
+      <div id="iss-msg"></div>
+      <p class="assumptions">The certificate number is allocated automatically from your prefix and the year.</p>
+    </section>
+
+    <section class="card sticky">
+      <h2>Result</h2>
+      <div id="iss-out">
+        <p class="assumptions">Fill in the learner's details and the signed certificate will appear here.</p>
+      </div>
+    </section>
+   </div>
+  </div>
+
+  <!-- ----------------------------------------------------------- verify -->
+  <div data-view="verify" hidden>
+   <div class="cols calc">
+    <section class="card">
+      <h2>Verify a certificate</h2>
+      <div class="field">
+        <label for="ver-code">Certificate code <span class="hint">the CERT1- string printed on the certificate</span></label>
+        <input id="ver-code" type="text" autocomplete="off" spellcheck="false" placeholder="CERT1-…">
+      </div>
+      <div class="field">
+        <label for="ver-key">Institute's published public key</label>
+        <input id="ver-key" type="text" autocomplete="off" spellcheck="false" placeholder="43-character key">
+      </div>
+      <div class="btnrow">
+        <button class="btn primary" type="button" id="ver-go">Check this certificate</button>
+        <button class="btn ghost" type="button" id="ver-mine">Use this institute's key</button>
+        <button class="btn ghost" type="button" id="ver-clear">Clear</button>
+      </div>
+      <div class="note">The public key decides the answer, not the institute name printed on the certificate. Anyone can generate a key and sign their own text with it, so get the key from the institute itself — from their website, letterhead or a key file they sent you — not from the certificate you are checking.</div>
+    </section>
+
+    <section class="card sticky">
+      <h2>Outcome</h2>
+      <div id="ver-out">
+        <p class="assumptions">Paste a code and the institute's public key to see whether the certificate is genuine and unaltered.</p>
+      </div>
+    </section>
+   </div>
+  </div>
+
+  <!-- ------------------------------------------------------------ batch -->
+  <div data-view="batch" hidden>
+   <div class="cols">
+    <section class="card">
+      <h2>Issue a whole batch from a CSV file</h2>
+      <p class="assumptions">Export a sheet with these columns from your spreadsheet. Column order does not matter, and <code>hours</code>, <code>grade</code> and <code>issued_on</code> may be left out. The button below copies them as one header line.</p>
+      <pre id="batch-header">learner_name
+course
+hours
+grade
+issued_on</pre>
+      <div class="field">
+        <label for="batch-file">CSV file</label>
+        <input id="batch-file" type="file" accept=".csv,.txt,text/csv,text/plain">
+      </div>
+      <div class="field">
+        <label for="batch-date">Issue date for rows that leave it blank <span class="hint">YYYY-MM-DD</span></label>
+        <input id="batch-date" type="text" inputmode="numeric" autocomplete="off" placeholder="2026-03-14">
+      </div>
+      <div class="btnrow">
+        <button class="btn primary" type="button" id="batch-go">Sign and issue every valid row</button>
+        <button class="btn ghost" type="button" id="batch-copy-header">Copy the header line</button>
+      </div>
+      <div id="batch-msg"></div>
+      <div id="batch-out"></div>
+    </section>
+   </div>
+  </div>
+
+  <!-- ----------------------------------------------------------- issued -->
+  <div data-view="issued" hidden>
+   <div class="cols">
+    <section class="card">
+      <h2>Certificates issued</h2>
+      <div id="issued-out">
+        <p class="assumptions">Nothing issued yet.</p>
+      </div>
+    </section>
+   </div>
+  </div>
+
+  <!-- -------------------------------------------------------- institute -->
+  <div data-view="institute" hidden>
+   <div class="cols calc">
+    <section class="card">
+      <h2>The institute and its signing key</h2>
+      <div class="field">
+        <label for="inst-name">Institute name <span class="hint">printed on every certificate and covered by the signature</span></label>
+        <input id="inst-name" type="text" autocomplete="off">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label for="inst-prefix">Number prefix <span class="hint">optional</span></label>
+          <input id="inst-prefix" type="text" autocomplete="off" placeholder="ASI">
+        </div>
+        <div class="field">
+          <label for="inst-keyfile">Private key file</label>
+          <input id="inst-keyfile" type="text" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+      <div class="btnrow">
+        <button class="btn primary" type="button" id="inst-load">Load the key in that file</button>
+        <button class="btn ghost" type="button" id="inst-generate">Generate a new key</button>
+      </div>
+      <div class="field">
+        <label for="inst-replace"><input id="inst-replace" type="checkbox"> Allow a new key to replace the file that is already there</label>
+      </div>
+      <div id="inst-msg"></div>
+      <div class="note">Generate the key once and keep the file safe. A new key cannot verify certificates issued under the old one: those stay checkable only against the public key they were signed with.</div>
+    </section>
+
+    <section class="card">
+      <h2>Public key to publish</h2>
+      <p class="assumptions">Give this to employers, print it on your certificates, put it on your website. It verifies certificates; it cannot issue them.</p>
+      <pre id="pubkey-out">Not set up yet.</pre>
+      <div class="btnrow">
+        <a class="btn ghost" id="pubkey-dl" href="api/pubkey.txt" download="institute-public-key.txt">Download as a text file</a>
+        <button class="btn ghost" type="button" id="pubkey-copy">Copy the key</button>
+      </div>
+      <div id="key-status"></div>
+    </section>
+   </div>
+  </div>
+
+  <!-- ------------------------------------------------------- print sheet -->
+  <div data-view="sheet" hidden>
+   <div class="cols">
+    <section class="card" id="sheet">
+      <p class="eyebrow" id="sheet-institute">—</p>
+      <h2 id="sheet-heading">Certificate of completion</h2>
+      <div class="result-primary">
+        <div class="k">This certifies that</div>
+        <div class="v" id="sheet-learner">—</div>
+        <div class="sub" id="sheet-sub">—</div>
+      </div>
+      <table class="breakdown">
+        <tbody id="sheet-rows"></tbody>
+      </table>
+      <h3>Verification code</h3>
+      <pre id="sheet-code">—</pre>
+      <h3>Institute public key</h3>
+      <pre id="sheet-key">—</pre>
+      <p class="assumptions" id="sheet-howto">—</p>
+    </section>
+    <div class="btnrow">
+      <button class="btn primary" type="button" id="sheet-print">Print this certificate</button>
+      <button class="btn ghost" type="button" id="sheet-copy">Copy the code</button>
+      <button class="btn ghost" type="button" id="sheet-back">Back</button>
+    </div>
+   </div>
+  </div>
+
+  <div class="note" data-chrome>What a passing check proves: this certificate was signed by the holder of that private key and none of its details have been altered since. It does not prove the institute is accredited, and it is not a W3C Verifiable Credential.</div>
+
+</main>
+
+<footer class="foot" data-chrome>
+  <div class="wrap">
+    <span>Open MSME · free tools for micro and small businesses in India and the Philippines</span>
+    <span><a href="https://sreenivas-sadhu-prabhakara.github.io/openmsme/">All tools</a></span>
+  </div>
+</footer>
+
+<script src="assets/app.js"></script>
+</body>
+</html>
